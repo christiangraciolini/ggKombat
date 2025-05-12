@@ -1,19 +1,24 @@
 package it.edu.iisgubbio.ggKombat;
 
-import java.util.List;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 
-public class Giocatore {
+public class Giocatore extends ImageView{
     private String nome;
     private int hp;
-    private List<Mossa> mosseDisponibili;
+    
 
-    public Giocatore(String nome, int hp, List<Mossa> mosseDisponibili) {
-        this.nome = nome;
+    public Giocatore(String nome, int hp,int x, int y,String percorso) {
+    	super();
+    	this.nome = nome;
         this.hp = hp;
-        this.mosseDisponibili = mosseDisponibili;
+        this.setX(x);
+		this.setY(y);
+		Image img = new Image(getClass().getResourceAsStream(percorso));
+		this.setImage(img);
     }
 
-    public String getNome() {
+	public String getNome() {
         return nome;
     }
 
@@ -33,9 +38,5 @@ public class Giocatore {
 
     public boolean èVivo() {
         return this.hp > 0;
-    }
-
-    public Mossa scegliMossa(int indice) {
-        return mosseDisponibili.get(indice);
     }
 }

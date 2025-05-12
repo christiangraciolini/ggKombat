@@ -1,124 +1,167 @@
 package it.edu.iisgubbio.ggKombat;
 
 import javafx.application.Application;
-import javafx.geometry.Pos;
-import javafx.scene.Node;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
-import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import javafx.scene.Scene;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.Pane;
 
-import java.util.Arrays;
-import java.util.List;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.KeyCode;
 
 public class FinestraCombattimento extends Application {
-    private Giocatore giocatore1;
-    private Giocatore giocatore2;
-    private String hpGiocatore1;
-    private String hpGiocatore2;
-    private String mossaGiocatore1;
-    private String mossaGiocatore2;
 
+    private ImageView giocatore;
+    private boolean destra = false;
+    private boolean sinistra = false;
+    private boolean salto = false;
+    private boolean inAria = false;
+    private double velocitaY = 0;
+    private double gravita = 1;
+    private double velocitaX = 5;
+
+    private Image a, b, c, d, e;
+    private boolean[][] collisioni = new boolean[100][100]; // Dimensioni provvisorie
 
     @Override
-    public void start(Stage finestra) {
-        // Crea le mosse per i giocatori
-        Mossa mossa1 = new Mossa("Palla di fuoco", 20, "attacco");
-        Mossa mossa2 = new Mossa("Colpo di pistola", 15, "attacco");
-        Mossa mossa3 = new Mossa("Pugno", 10, "attacco");
-        Mossa mossa4 = new Mossa("Calcio", 15, "attacco");
-        Mossa mossa5 = new Mossa("Scudo", 0, "scudo");
-        Mossa mossa6 = new Mossa("Rafforzatore", 0, "buff");
-        Mossa mossa7 = new Mossa("Ripresa", 20, "cura");
-        Mossa mossa8 = new Mossa("Colpo", 8, "attacco");
-        Mossa mossa9 = new Mossa("Fulmine", 25, "attacco");
-        Mossa mossa10 = new Mossa("Taglio", 12, "attacco");
+    public void start(Stage primaryStage) {
+        Pane root = new Pane();
 
-        giocatore1 = new Giocatore("Giocatore 1", 100, Arrays.asList(mossa1, mossa2, mossa3, mossa4, mossa5, mossa6, mossa7, mossa8, mossa9, mossa10));
-        giocatore2 = new Giocatore("Giocatore 2", 100, Arrays.asList(mossa1, mossa2, mossa3, mossa4, mossa5, mossa6, mossa7, mossa8, mossa9, mossa10));
+        // Caricamento immagini
+        a = new Image(getClass().getResourceAsStream("a.png"));
+        b = new Image(getClass().getResourceAsStream("b.png"));
+        c = new Image(getClass().getResourceAsStream("c.png"));
+        d = new Image(getClass().getResourceAsStream("d.png"));
+        e = new Image(getClass().getResourceAsStream("e.png"));
 
-       
-        VBox root = new VBox(20);
-        root.setAlignment(Pos.CENTER);
+        // Giocatore
+        Image img = new Image(getClass().getResourceAsStream("c1.png"));
+        giocatore = new ImageView(img);
+        giocatore.setFitWidth(60);
+        giocatore.setFitHeight(60);
+        giocatore.setX(100);
+        giocatore.setY(300);
+        root.getChildren().add(giocatore);
 
+        // Scena
+        Scene scene = new Scene(root, 800, 600);
+        primaryStage.setTitle("GG Kombat");
+        primaryStage.setScene(scene);
+        primaryStage.show();
 
-        GridPane grid = new GridPane();
-        grid.setVgap(20);
-        grid.setHgap(20);
+        // Controlli
+        scene.setOnKeyPressed(this::tastoPremuto);
+        scene.setOnKeyReleased(this::tastoRilasciato);
 
+        // Timeline di aggiornamento
+        Timeline timeline = new Timeline(new KeyFrame(Duration.millis(16), e -> aggiorna()));
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        timeline.play();
 
-        String nomeGiocatore1 = new String("giocatore1");
-        hpGiocatore1 = new String("HP: " + giocatore1.getHp());
-        mossaGiocatore1 = new String("Mossa: N/A");
-        
+        // Lettura mappa da file
+        try (InputStream is = getClass().getResourceAsStream("/it/edu/iisgubbio/ggKombat/Grafica");
+             BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
 
-        String nomeGiocatore2 = new String(giocatore2.getNome());
-        hpGiocatore2 = new String("HP: " + giocatore2.getHp());
-        mossaGiocatore2 = new String("Mossa: N/A");
+            String riga;
+            int y = 0;
 
-        grid.add(nomeGiocatore1, 0, 0);
-        grid.add(hpGiocatore1, 0, 1);
-        grid.add(mossaGiocatore1, 0, 2);
-        
-        grid.add(nomeGiocatore2, 0, 3);
-        grid.add(hpGiocatore2, 0, 4);
-        grid.add(mossaGiocatore2, 0, 5);
+            while ((riga = br.readLine()) != null) {
+                for (int x = 0; x < riga.length(); x++) {
+                    char carattere = riga.charAt(x);
+                    ImageView tileView = new ImageView();
+                    Image immagine = null;
+                    boolean solido = false;
 
+                    // Mappa caratteri -> immagini
+                    switch (carattere) {
+                        case 'a': immagine = a; solido = true; break;
+                        case 'b': immagine = b; solido = true; break;
+                        case 'c': immagine = c; solido = true; break;
+                        case 'd': immagine = d; solido = true; break;
+                        case 'e': immagine = e; solido = false; break;
+                    }
 
-        HBox hbox = new HBox(10);
-        hbox.setAlignment(Pos.CENTER);
+                    if (immagine != null) {
+                        tileView.setImage(immagine);
+                        tileView.setFitWidth(60);
+                        tileView.setFitHeight(60);
+                        tileView.setX(x * 60);
+                        tileView.setY(y * 60);
+                        root.getChildren().add(tileView);
+                    }
 
-
-        Button btnMossa1 = new Button(mossa1.getNome());
-        btnMossa1.setOnAction(e -> eseguiMossa(giocatore1, giocatore2, mossa1));
-
-        Button btnMossa2 = new Button(mossa2.getNome());
-        btnMossa2.setOnAction(e -> eseguiMossa(giocatore1, giocatore2, mossa2));
-
-
-        Button btnMossa3 = new Button(mossa1.getNome());
-        btnMossa3.setOnAction(e -> eseguiMossa(giocatore2, giocatore1, mossa1));
-
-        Button btnMossa4 = new Button(mossa2.getNome());
-        btnMossa4.setOnAction(e -> eseguiMossa(giocatore2, giocatore1, mossa2));
-
-        hbox.getChildren().addAll(btnMossa1, btnMossa2, btnMossa3, btnMossa4);
-
-        root.getChildren().addAll(grid, hbox);
-
-        Scene scene = new Scene(root, 600, 600);
-        finestra.setScene(scene);
-        finestra.setTitle("Combattimento");
-        finestra.show();
-    }
-
-    private void eseguiMossa(Giocatore attaccante, Giocatore difensore, Mossa mossa) {
-        // Esegui la mossa dell'attaccante
-        mossa.applicaEffetto(difensore);
-
-        // Aggiorna la mossa scelta e gli HP
-        if (attaccante == giocatore1) {
-            mossaGiocatore1.setText("Mossa: " + mossa.getNome());
-        } else {
-            mossaGiocatore2.setText("Mossa: " + mossa.getNome());
-        }
-
-        hpGiocatore1.setText("HP: " + giocatore1.getHp());
-        hpGiocatore2.setText("HP: " + giocatore2.getHp());
-
-        // Ricarica la finestra
-        if (!giocatore1.èVivo() || !giocatore2.èVivo()) {
-            // Finito il combattimento, mostriamo il vincitore
-            if (giocatore1.èVivo()) {
-                mossaGiocatore1.setText("Vincitore: " + giocatore1.getNome());
-            } else {
-                mossaGiocatore2.setText("Vincitore: " + giocatore2.getNome());
+                    // Salvataggio collisioni
+                    if (x < collisioni.length && y < collisioni[0].length) {
+                        collisioni[x][y] = solido;
+                    }
+                }
+                y++;
             }
+
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
     }
+
+    private void aggiorna() {
+        if (destra) {
+            giocatore.setX(giocatore.getX() + velocitaX);
+        }
+        if (sinistra) {
+            giocatore.setX(giocatore.getX() - velocitaX);
+        }
+
+        // Gravità
+        giocatore.setY(giocatore.getY() + velocitaY);
+        if (giocatore.getY() + giocatore.getFitHeight() < 500) {
+            velocitaY += gravita;
+            inAria = true;
+        } else {
+            giocatore.setY(500 - giocatore.getFitHeight());
+            velocitaY = 0;
+            inAria = false;
+        }
+
+        // Salto
+        if (salto && !inAria) {
+            velocitaY = -15;
+            inAria = true;
+        }
+    }
+
+    private void tastoPremuto(KeyEvent e) {
+        if (e.getCode() == KeyCode.D) {
+            destra = true;
+        }
+        if (e.getCode() == KeyCode.A) {
+            sinistra = true;
+        }
+        if (e.getCode() == KeyCode.SPACE) {
+            salto = true;
+        }
+    }
+
+    private void tastoRilasciato(KeyEvent e) {
+        if (e.getCode() == KeyCode.D) {
+            destra = false;
+        }
+        if (e.getCode() == KeyCode.A) {
+            sinistra = false;
+        }
+        if (e.getCode() == KeyCode.SPACE) {
+            salto = false;
+        }
+    }
+
     public static void main(String[] args) {
         launch(args);
     }
